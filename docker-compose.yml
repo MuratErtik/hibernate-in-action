@@ -1,0 +1,36 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: hibernate-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "12345"
+      MYSQL_DATABASE: "hibernatedb"
+      MYSQL_USER: "murat"
+      MYSQL_PASSWORD: ""
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - mysql
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=
+    depends_on:
+      - prometheus
+
+volumes:
+  mysql_data:
