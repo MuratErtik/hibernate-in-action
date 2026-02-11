@@ -13,6 +13,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,8 +48,9 @@ public class HibernateInActionApplication {
         return args -> {
 
             Customer customer = new Customer();
-            customer.setName("John Doe");
+            customer.setName("jane baba2");
             customer.setCustomerType(CustomerType.SUPER_CUSTOMER);
+            customer.setBalance(BigDecimal.ZERO);
 
             Metadata metadata = new Metadata();
             metadata.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
@@ -86,6 +88,19 @@ public class HibernateInActionApplication {
 }
 
 interface CustomerRepository extends JpaRepository<Customer, Long> {
+
+    /*
+    duz sorguda 500 aliriz cunku transaction alinmasi gerekir
+    ama sonrasinda versiyonda koyman gerekir!!
+    OPTIMISTIC_FORCE_INCREMENT kendisi +1 daha yapar
+    ama entity de version zaten +1 yapar o yuzden sadece opt yapmak yeterli olacaktir
+    ama bu ornekte cozum olmayacaktir
+     */
+    @Lock(LockModeType.OPTIMISTIC)
+
+
+    Customer findByName(String name);
+
 }
 
 interface ProductRepository extends JpaRepository<Product, Long> {}
@@ -99,6 +114,11 @@ class Customer {
     private Long id;
 
     private String name;
+
+    private BigDecimal balance;
+
+    @Version
+    private Integer version;
 
     @Enumerated(EnumType.STRING) // artik string degeri neyse onu yazar
     private CustomerType customerType; // db de 0,1,2 olarak tutulur
@@ -161,6 +181,13 @@ class CustomerService {
         Thread.sleep(5000);
         return customerRepository.findAll();
     }
+
+    @Transactional
+    public void increment() {
+        Customer c = this.customerRepository.findByName("jane baba2");
+        c.setBalance(c.getBalance().add(BigDecimal.ONE));
+        customerRepository.save(c);
+    }
 }
 
 @RestController
@@ -172,5 +199,12 @@ class CustomerController {
     @GetMapping("/all")
     public List<Customer> findAll() throws InterruptedException {
         return this.customerService.findAll();
+    }
+
+    @GetMapping("/inc")
+    void increment(){
+        this.customerService.increment();
+        // ab -n 100 -c 2  http://localhost:8080/customers/inc
+        //bu istek gelirse +100 olacagina +50 olacaktir ve veri bozulacaktir
     }
 }
