@@ -2,7 +2,7 @@ package org.example.hibernateinaction;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.*;
-import jakarta.transaction.Transactional;
+
 import lombok.*;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
@@ -15,6 +15,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,7 +50,7 @@ public class HibernateInActionApplication {
         return args -> {
 
             Customer customer = new Customer();
-            customer.setName("jane baba2");
+            customer.setName("jane baba3");
             customer.setCustomerType(CustomerType.SUPER_CUSTOMER);
             customer.setBalance(BigDecimal.ZERO);
 
@@ -93,12 +95,20 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
     duz sorguda 500 aliriz cunku transaction alinmasi gerekir
     ama sonrasinda versiyonda koyman gerekir!!
     OPTIMISTIC_FORCE_INCREMENT kendisi +1 daha yapar
+    ab -n 100 -c 2  http://localhost:8080/customers/inc
+
     ama entity de version zaten +1 yapar o yuzden sadece opt yapmak yeterli olacaktir
-    ama bu ornekte cozum olmayacaktir
+    ama bu ornekte cozum olmayacaktir ama version ve balance dogru sekilde gider
+
+    ab -n 100 -c 2  http://localhost:8080/customers/inc
+    pessimisticde  ise bir yerlerde eksik deger ekler ve deadlock olusur
+
+    SHOW  ENGINE INNODB STATUS  mysqlde bir motordur lowlevel loglari gosterir deadlock loglarini gorebilirsin
+    spring CannotAcquireLockException verir
      */
-    @Lock(LockModeType.OPTIMISTIC)
 
-
+    //@Lock(LockModeType.OPTIMISTIC)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Customer findByName(String name);
 
 }
@@ -182,9 +192,11 @@ class CustomerService {
         return customerRepository.findAll();
     }
 
+    //@Transactional(isolation = Isolation.SERIALIZABLE)
+    //en kati olandir datayi saglam locklar!!!
     @Transactional
     public void increment() {
-        Customer c = this.customerRepository.findByName("jane baba2");
+        Customer c = this.customerRepository.findByName("jane baba3");
         c.setBalance(c.getBalance().add(BigDecimal.ONE));
         customerRepository.save(c);
     }
