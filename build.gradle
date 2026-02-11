@@ -24,6 +24,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator' // spring boot insidelarini saglayan bir method
     implementation 'io.micrometer:micrometer-registry-prometheus' // sistemdeki metrikleri disari verir
 
+    implementation 'org.springframework.retry:spring-retry'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
 
     implementation 'org.projectlombok:lombok:1.18.40'
     compileOnly 'org.projectlombok:lombok:1.18.40'
