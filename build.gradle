@@ -21,6 +21,10 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator' // spring boot insidelarini saglayan bir method
+    implementation 'io.micrometer:micrometer-registry-prometheus' // sistemdeki metrikleri disari verir
+
+
     implementation 'org.projectlombok:lombok:1.18.40'
     compileOnly 'org.projectlombok:lombok:1.18.40'
     annotationProcessor 'org.projectlombok:lombok:1.18.40'
