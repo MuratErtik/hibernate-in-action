@@ -1,18 +1,22 @@
 package org.example.hibernateinaction;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.*;
-import lombok.Builder;
-import lombok.Data;
-import lombok.Generated;
-import lombok.NoArgsConstructor;
+import jakarta.transaction.Transactional;
+import lombok.*;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.sql.Time;
@@ -72,6 +76,11 @@ public class HibernateInActionApplication {
 
 
         };
+    }
+
+    @Bean
+    MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
+        return registry -> registry.config().commonTags("application", "HibernateInActionApplication");
     }
 
 }
@@ -140,4 +149,28 @@ class Metadata{
     private Timestamp createdAt;
 
     private Timestamp updatedAt;
+}
+
+@Service
+@RequiredArgsConstructor
+class CustomerService {
+    private final CustomerRepository customerRepository;
+
+    @Transactional
+    public List<Customer> findAll() throws InterruptedException {
+        Thread.sleep(5000);
+        return customerRepository.findAll();
+    }
+}
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/customers")
+class CustomerController {
+    private final CustomerService customerService;
+
+    @GetMapping("/all")
+    public List<Customer> findAll() throws InterruptedException {
+        return this.customerService.findAll();
+    }
 }
