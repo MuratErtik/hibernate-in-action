@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.*;
 
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
 import org.springframework.boot.CommandLineRunner;
@@ -14,6 +15,11 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +36,7 @@ import java.util.List;
 import java.util.Optional;
 
 @SpringBootApplication
+@EnableRetry
 public class HibernateInActionApplication {
 
     public static void main(String[] args) {
@@ -86,6 +93,7 @@ public class HibernateInActionApplication {
     MeterRegistryCustomizer<MeterRegistry> metricsCommonTags() {
         return registry -> registry.config().commonTags("application", "HibernateInActionApplication");
     }
+    //grafanada okunurlugu arttirmak icin
 
 }
 
@@ -97,7 +105,7 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
     OPTIMISTIC_FORCE_INCREMENT kendisi +1 daha yapar
     ab -n 100 -c 2  http://localhost:8080/customers/inc
 
-    ama entity de version zaten +1 yapar o yuzden sadece opt yapmak yeterli olacaktir
+    ama entity de version zaten +1 yapar o yuzden sadece optimistic yapmak yeterli olacaktir
     ama bu ornekte cozum olmayacaktir ama version ve balance dogru sekilde gider
 
     ab -n 100 -c 2  http://localhost:8080/customers/inc
@@ -183,6 +191,7 @@ class Metadata{
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 class CustomerService {
     private final CustomerRepository customerRepository;
 
@@ -194,11 +203,31 @@ class CustomerService {
 
     //@Transactional(isolation = Isolation.SERIALIZABLE)
     //en kati olandir datayi saglam locklar!!!
+//    @Retryable(
+//            retryFor = { ObjectOptimisticLockingFailureException.class },
+//            maxAttempts = 3,
+//            backoff = @Backoff(delay = 5000,multiplier = 2)
+//    )
+    /*
+    retryFor: Sadece bu hata türü oluştuğunda tekrar dene. (Optimistic Lock hatası).
+    maxAttempts: Toplam deneme sayısı. (Burada 3 kez şansını deneyecek).
+    backoff: Denemeler arasındaki bekleme süresi.
+    delay = 500: İlk hatadan sonra 5000ms bekle.
+    multiplier = 2: (Opsiyonel) Her seferinde bekleme süresini iki katına çıkar (500ms, 1000ms, 2000ms gibi).
+     Buna "Exponential Backoff" denir ve sistemi rahatlatır.
+         */
     @Transactional
     public void increment() {
         Customer c = this.customerRepository.findByName("jane baba3");
         c.setBalance(c.getBalance().add(BigDecimal.ONE));
         customerRepository.save(c);
+    }
+
+    //@Recover: Eğer tüm denemeler başarısız olursa (maxAttempts dolarsa) devreye giren "kurtarma" metodudur.
+    // Parametreleri orijinal metotla aynı olmalıdır.
+    @Recover
+    public void recover(ObjectOptimisticLockingFailureException e) {
+        log.error(e.getMessage());
     }
 }
 
