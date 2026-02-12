@@ -7,6 +7,10 @@ import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKTReader;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
@@ -52,7 +56,7 @@ public class HibernateInActionApplication {
 
      */
     @Bean
-    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository, final ProductRepository productRepository) {
+    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository, final ProductRepository productRepository,final LocationService locationService) {
 
         return args -> {
 
@@ -84,7 +88,7 @@ public class HibernateInActionApplication {
             System.out.println(customer);
 
 
-
+            locationService.save();
 
         };
     }
@@ -121,6 +125,11 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
 
 }
 
+interface LocationRepository extends JpaRepository<Location, Long> {
+
+
+}
+
 interface ProductRepository extends JpaRepository<Product, Long> {}
 
 @Data
@@ -153,6 +162,18 @@ enum CustomerType{
     SUPER_CUSTOMER,
     NORMAL_CUSTOMER
     //biri bunlarin yerini degistirirse db ye veri tutarsizligi olur o yuzden yukarida @Enumerated kullan
+}
+
+@Data
+@Entity
+class Location{
+
+    @Id
+    @GeneratedValue
+    private Long id;
+
+    private Point point;
+
 }
 
 
@@ -228,6 +249,23 @@ class CustomerService {
     @Recover
     public void recover(ObjectOptimisticLockingFailureException e) {
         log.error(e.getMessage());
+    }
+}
+
+@Service
+@RequiredArgsConstructor
+class LocationService {
+    private final LocationRepository locationRepository;
+
+    void save() throws ParseException {
+        Location location = new Location();
+        Geometry g = wktToGeometry("POINT (2 5)");
+        location.setPoint(g.getInteriorPoint());
+        this.locationRepository.save(location);
+    }
+
+    public Geometry wktToGeometry(String wellKnownText) throws ParseException {
+        return new WKTReader().read(wellKnownText);
     }
 }
 
