@@ -1,10 +1,12 @@
 package org.example.hibernateinaction;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.*;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
 import org.locationtech.jts.geom.Geometry;
@@ -15,6 +17,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,6 +45,7 @@ import java.util.Optional;
 
 @SpringBootApplication
 @EnableRetry
+@EnableCaching
 public class HibernateInActionApplication {
 
     public static void main(String[] args) {
@@ -56,12 +61,12 @@ public class HibernateInActionApplication {
 
      */
     @Bean
-    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository, final ProductRepository productRepository,final LocationService locationService) {
+    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository,final LocationService locationService) {
 
         return args -> {
 
             Customer customer = new Customer();
-            customer.setName("jane baba3");
+            customer.setName("murat");
             customer.setCustomerType(CustomerType.SUPER_CUSTOMER);
             customer.setBalance(BigDecimal.ZERO);
 
@@ -72,17 +77,17 @@ public class HibernateInActionApplication {
 
             customerRepository.save(customer);
 
-            Product product1 = new Product();
-            product1.setTitle("phone");
-            product1.setCustomer(customer);
-            product1.setPrice(BigDecimal.valueOf(100));
-
-            Product product2 = new Product();
-            product2.setTitle("pc");
-            product2.setCustomer(customer);
-            product2.setPrice(BigDecimal.valueOf(200));
-
-            productRepository.saveAll(Arrays.asList(product1, product2));
+//            Product product1 = new Product();
+//            product1.setTitle("phone");
+//            product1.setCustomer(customer);
+//            product1.setPrice(BigDecimal.valueOf(100));
+//
+//            Product product2 = new Product();
+//            product2.setTitle("pc");
+//            product2.setCustomer(customer);
+//            product2.setPrice(BigDecimal.valueOf(200));
+//
+//            productRepository.saveAll(Arrays.asList(product1, product2));
 
 
             System.out.println(customer);
@@ -130,10 +135,13 @@ interface LocationRepository extends JpaRepository<Location, Long> {
 
 }
 
-interface ProductRepository extends JpaRepository<Product, Long> {}
+//interface ProductRepository extends JpaRepository<Product, Long> {}
 
 @Data
 @Entity
+@Cacheable
+@org.hibernate.annotations.Cache(region = "customer",usage = CacheConcurrencyStrategy.READ_WRITE)
+//caching esnasinda kitleme yapar bu stratji veri tutarliligini saglamak icin transaction bitmesini bekler
 class Customer {
 
     @Id
@@ -145,16 +153,17 @@ class Customer {
     private BigDecimal balance;
 
     @Version
-    private Integer version;
+    private Long version;
 
     @Enumerated(EnumType.STRING) // artik string degeri neyse onu yazar
     private CustomerType customerType; // db de 0,1,2 olarak tutulur
 
+    @JsonIgnore
     private Metadata metadata;
 
-    @OneToMany(cascade = CascadeType.ALL,mappedBy = "customer", fetch = FetchType.EAGER) // zincirleme veri varsa onlarida hallet demek
-    //mappedby diger tabloda beni nasil aniyorlar diye
-    private List<Product> products;
+//    @OneToMany(cascade = CascadeType.ALL,mappedBy = "customer", fetch = FetchType.LAZY) // zincirleme veri varsa onlarida hallet demek
+//    //mappedby diger tabloda beni nasil aniyorlar diye
+//    private List<Product> products;
 }
 
 enum CustomerType{
@@ -177,29 +186,29 @@ class Location{
 }
 
 
-@Data
-@Entity
-class Product {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String title;
-
-    private BigDecimal price;
-
-    @ManyToOne()
-    private Customer customer;
-
-    @Formula("price * 0.18")
-    private BigDecimal tax; //veritabanina yazmaz transient olarak algilar hibernate formula sayesinde
-
-
-    private Metadata metadata;
-
-
-}
+//@Data
+//@Entity
+//class Product {
+//
+//    @Id
+//    @GeneratedValue(strategy = GenerationType.IDENTITY)
+//    private Long id;
+//
+//    private String title;
+//
+//    private BigDecimal price;
+//
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    private Customer customer;
+//
+//    @Formula("price * 0.18")
+//    private BigDecimal tax; //veritabanina yazmaz transient olarak algilar hibernate formula sayesinde
+//
+//
+//    private Metadata metadata;
+//
+//
+//}
 
 @Embeddable //uzun uzun kullanimlari engeller daha temiz kod olur
 @Data
@@ -239,7 +248,7 @@ class CustomerService {
          */
     @Transactional
     public void increment() {
-        Customer c = this.customerRepository.findByName("jane baba3");
+        Customer c = this.customerRepository.findByName("murat");
         c.setBalance(c.getBalance().add(BigDecimal.ONE));
         customerRepository.save(c);
     }
@@ -249,6 +258,10 @@ class CustomerService {
     @Recover
     public void recover(ObjectOptimisticLockingFailureException e) {
         log.error(e.getMessage());
+    }
+
+    public Customer findById(Long id) {
+        return this.customerRepository.findById(id).orElse(null);
     }
 }
 
@@ -286,4 +299,11 @@ class CustomerController {
         // ab -n 100 -c 2  http://localhost:8080/customers/inc
         //bu istek gelirse +100 olacagina +50 olacaktir ve veri bozulacaktir
     }
+
+    @GetMapping("/{id}")
+    public Customer findById(@PathVariable Long id) {
+        return this.customerService.findById(id);
+    }
+
+
 }
