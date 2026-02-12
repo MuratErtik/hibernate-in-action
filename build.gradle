@@ -26,6 +26,7 @@ dependencies {
 
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'org.hibernate:hibernate-spatial:6.6.4.Final'
 
     implementation 'org.projectlombok:lombok:1.18.40'
     compileOnly 'org.projectlombok:lombok:1.18.40'
