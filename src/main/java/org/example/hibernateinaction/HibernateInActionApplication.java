@@ -25,6 +25,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.EnableRetry;
@@ -114,6 +115,8 @@ public class HibernateInActionApplication {
 //            }
 
             customerService.insertBatch();
+            List<CountByGender> countByGender = customerRepository.groupByGender();
+            System.out.println(countByGender);
 
         };
     }
@@ -148,6 +151,18 @@ interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Customer findByName(String name);
 
+    @Query("SELECT new org.example.hibernateinaction.CountByGender(c.gender as gender, count(c) as count)  FROM Customer c group by c.gender")
+    List<CountByGender> groupByGender();
+
+
+}
+
+@AllArgsConstructor
+@NoArgsConstructor
+@Data
+class CountByGender{
+    private String gender;
+    private long count;
 }
 
 interface LocationRepository extends JpaRepository<Location, Long> {
