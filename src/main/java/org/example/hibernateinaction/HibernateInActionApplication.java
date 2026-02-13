@@ -6,6 +6,9 @@ import jakarta.persistence.*;
 
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import net.datafaker.Faker;
+import net.datafaker.providers.base.Gender;
+import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
@@ -40,6 +43,7 @@ import java.math.BigDecimal;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -62,21 +66,21 @@ public class HibernateInActionApplication {
 
      */
     @Bean
-    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository,final LocationService locationService) {
+    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository, final LocationService locationService, CustomerService customerService) {
 
         return args -> {
 
-            Customer customer = new Customer();
-            customer.setName("murat");
-            customer.setCustomerType(CustomerType.SUPER_CUSTOMER);
-            customer.setBalance(BigDecimal.ZERO);
-
-            Metadata metadata = new Metadata();
-            metadata.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
-            metadata.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
-            customer.setMetadata(metadata);
-
-            customerRepository.save(customer);
+//            Customer customer = new Customer();
+//            customer.setName("murat");
+//            customer.setCustomerType(CustomerType.SUPER_CUSTOMER);
+//            customer.setBalance(BigDecimal.ZERO);
+//
+//            Metadata metadata = new Metadata();
+//            metadata.setCreatedAt(Timestamp.valueOf(LocalDateTime.now()));
+//            metadata.setUpdatedAt(Timestamp.valueOf(LocalDateTime.now()));
+//            customer.setMetadata(metadata);
+//
+//            customerRepository.save(customer);
 
 //            Product product1 = new Product();
 //            product1.setTitle("phone");
@@ -91,10 +95,25 @@ public class HibernateInActionApplication {
 //            productRepository.saveAll(Arrays.asList(product1, product2));
 
 
-            System.out.println(customer);
+//            System.out.println(customer);
 
 
-            locationService.save();
+//            Faker faker = new Faker();
+//            for (int i = 0; i < 100; i++) {
+//                Customer customer = new Customer();
+//                customer.setName(faker.name().firstName());
+//                customer.setSurname(faker.name().lastName());
+//                customer.setEmail(faker.internet().emailAddress());
+//                customer.setBalance(new BigDecimal(faker.number().numberBetween(1, 100)));
+//                customer.setAge(faker.number().numberBetween(1, 100));
+//                customer.setCustomerType(CustomerType.NORMAL_CUSTOMER);
+//                customer.setPhone(faker.phoneNumber().phoneNumber());
+//                customer.setGender(faker.gender().types());
+//
+//                customerRepository.save(customer);
+//            }
+
+            customerService.insertBatch();
 
         };
     }
@@ -139,19 +158,32 @@ interface LocationRepository extends JpaRepository<Location, Long> {
 //interface ProductRepository extends JpaRepository<Product, Long> {}
 
 @Data
+@Builder
 @Entity
 @Cacheable
-@org.hibernate.annotations.Cache(region = "customer",usage = CacheConcurrencyStrategy.READ_WRITE)
+@Cache(region = "customer",usage = CacheConcurrencyStrategy.READ_WRITE)
+@NoArgsConstructor
+@AllArgsConstructor
 //caching esnasinda kitleme yapar bu stratji veri tutarliligini saglamak icin transaction bitmesini bekler
 class Customer implements Serializable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // customer_seq tablosunuda olustrur
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
     private String name;
 
     private BigDecimal balance;
+
+    private String surname;
+
+    private String phone;
+
+    private String email;
+
+    private Integer age;
+
+    private String gender;
 
     @Version
     private Long version;
@@ -263,6 +295,29 @@ class CustomerService {
 
     public Customer findById(Long id) {
         return this.customerRepository.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public void insertBatch(){
+
+        Faker faker = new Faker();
+        List<Customer> customers = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            Customer customer = new Customer();
+            customer.setName(faker.name().firstName());
+            customer.setSurname(faker.name().lastName());
+            customer.setEmail(faker.internet().emailAddress());
+            customer.setBalance(new BigDecimal(faker.number().numberBetween(1, 100)));
+            customer.setAge(faker.number().numberBetween(1, 100));
+            customer.setCustomerType(CustomerType.NORMAL_CUSTOMER);
+            customer.setPhone(faker.phoneNumber().phoneNumber());
+            customer.setGender(faker.gender().types());
+            customers.add(customer);
+
+
+        }
+        this.customerRepository.saveAll(customers);
+
     }
 }
 
