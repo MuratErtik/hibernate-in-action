@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -142,7 +143,7 @@ interface LocationRepository extends JpaRepository<Location, Long> {
 @Cacheable
 @org.hibernate.annotations.Cache(region = "customer",usage = CacheConcurrencyStrategy.READ_WRITE)
 //caching esnasinda kitleme yapar bu stratji veri tutarliligini saglamak icin transaction bitmesini bekler
-class Customer {
+class Customer implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // customer_seq tablosunuda olustrur
