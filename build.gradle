@@ -24,6 +24,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator' // spring boot insidelarini saglayan bir method
     implementation 'io.micrometer:micrometer-registry-prometheus' // sistemdeki metrikleri disari verir
     implementation 'net.datafaker:datafaker:2.4.0'
+    implementation 'org.hibernate.orm:hibernate-envers:6.6.4.Final'
     implementation 'org.springframework.retry:spring-retry'
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.hibernate:hibernate-spatial:6.6.4.Final'
