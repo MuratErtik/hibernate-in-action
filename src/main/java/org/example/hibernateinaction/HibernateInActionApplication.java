@@ -12,6 +12,8 @@ import org.hibernate.annotations.Cache;
 import org.hibernate.annotations.CacheConcurrencyStrategy;
 import org.hibernate.annotations.Formula;
 import org.hibernate.boot.MetadataSources;
+import org.hibernate.envers.*;
+import org.hibernate.envers.strategy.internal.DefaultAuditStrategy;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.io.ParseException;
@@ -31,6 +33,10 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,7 +78,7 @@ public class HibernateInActionApplication {
         return args -> {
 
 //            Customer customer = new Customer();
-//            customer.setName("murat");
+//            customer.setName("Ada");
 //            customer.setCustomerType(CustomerType.SUPER_CUSTOMER);
 //            customer.setBalance(BigDecimal.ZERO);
 //
@@ -179,6 +185,7 @@ interface LocationRepository extends JpaRepository<Location, Long> {
 @Cache(region = "customer",usage = CacheConcurrencyStrategy.READ_WRITE)
 @NoArgsConstructor
 @AllArgsConstructor
+@Audited
 //caching esnasinda kitleme yapar bu stratji veri tutarliligini saglamak icin transaction bitmesini bekler
 class Customer implements Serializable {
 
@@ -219,6 +226,37 @@ enum CustomerType{
     SUPER_CUSTOMER,
     NORMAL_CUSTOMER
     //biri bunlarin yerini degistirirse db ye veri tutarsizligi olur o yuzden yukarida @Enumerated kullan
+}
+
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@RevisionEntity(AuditRevisionListener.class)
+@Table(name = "revinfo")
+class AuditRevisionEntity extends DefaultRevisionEntity {
+    private String user;
+}
+
+class AuditRevisionListener implements RevisionListener {
+
+    @Override
+    public void newRevision(Object revisionEntity) {
+
+        String currentUser = Optional.ofNullable(SecurityContextHolder.getContext())
+                .map(SecurityContext::getAuthentication)
+                .filter(Authentication::isAuthenticated)
+                .map(Authentication::getPrincipal)
+                .map(User.class::cast)
+                .map(User::getUsername)
+                .orElse("unknown user");
+
+        AuditRevisionEntity audit = (AuditRevisionEntity) revisionEntity;
+        audit.setUser(currentUser);
+    }
+
+
+
 }
 
 @Data
@@ -296,7 +334,7 @@ class CustomerService {
          */
     @Transactional
     public void increment() {
-        Customer c = this.customerRepository.findByName("murat");
+        Customer c = this.customerRepository.findById(28L).orElse(null);
         c.setBalance(c.getBalance().add(BigDecimal.ONE));
         customerRepository.save(c);
     }
