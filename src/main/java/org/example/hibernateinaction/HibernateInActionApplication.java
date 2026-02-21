@@ -73,7 +73,7 @@ public class HibernateInActionApplication {
 
      */
     @Bean
-    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository, final LocationService locationService, CustomerService customerService) {
+    CommandLineRunner commandLineRunner(final CustomerRepository customerRepository /*final LocationService locationService*/, CustomerService customerService) {
 
         return args -> {
 
@@ -120,9 +120,9 @@ public class HibernateInActionApplication {
 //                customerRepository.save(customer);
 //            }
 
-            customerService.insertBatch();
-            List<CountByGender> countByGender = customerRepository.groupByGender();
-            System.out.println(countByGender);
+//            customerService.insertBatch();
+//            List<CountByGender> countByGender = customerRepository.groupByGender();
+//            System.out.println(countByGender);
 
         };
     }
@@ -171,10 +171,10 @@ class CountByGender{
     private long count;
 }
 
-interface LocationRepository extends JpaRepository<Location, Long> {
-
-
-}
+//interface LocationRepository extends JpaRepository<Location, Long> {
+//
+//
+//}
 
 //interface ProductRepository extends JpaRepository<Product, Long> {}
 
@@ -190,7 +190,7 @@ interface LocationRepository extends JpaRepository<Location, Long> {
 class Customer implements Serializable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
@@ -213,7 +213,7 @@ class Customer implements Serializable {
     @Enumerated(EnumType.STRING) // artik string degeri neyse onu yazar
     private CustomerType customerType; // db de 0,1,2 olarak tutulur
 
-    @JsonIgnore
+    //@JsonIgnore
     private Metadata metadata;
 
 //    @OneToMany(cascade = CascadeType.ALL,mappedBy = "customer", fetch = FetchType.LAZY) // zincirleme veri varsa onlarida hallet demek
@@ -259,17 +259,17 @@ class AuditRevisionListener implements RevisionListener {
 
 }
 
-@Data
-@Entity
-class Location{
-
-    @Id
-    @GeneratedValue
-    private Long id;
-
-    private Point point;
-
-}
+//@Data
+//@Entity
+//class Location{
+//
+//    @Id
+//    @GeneratedValue
+//    private Long id;
+//
+//    private Point point;
+//
+//}
 
 
 //@Data
@@ -374,22 +374,22 @@ class CustomerService {
     }
 }
 
-@Service
-@RequiredArgsConstructor
-class LocationService {
-    private final LocationRepository locationRepository;
-
-    void save() throws ParseException {
-        Location location = new Location();
-        Geometry g = wktToGeometry("POINT (2 5)");
-        location.setPoint(g.getInteriorPoint());
-        this.locationRepository.save(location);
-    }
-
-    public Geometry wktToGeometry(String wellKnownText) throws ParseException {
-        return new WKTReader().read(wellKnownText);
-    }
-}
+//@Service
+//@RequiredArgsConstructor
+//class LocationService {
+//    private final LocationRepository locationRepository;
+//
+//    void save() throws ParseException {
+//        Location location = new Location();
+//        Geometry g = wktToGeometry("POINT (2 5)");
+//        location.setPoint(g.getInteriorPoint());
+//        this.locationRepository.save(location);
+//    }
+//
+//    public Geometry wktToGeometry(String wellKnownText) throws ParseException {
+//        return new WKTReader().read(wellKnownText);
+//    }
+//}
 
 @RestController
 @RequiredArgsConstructor
